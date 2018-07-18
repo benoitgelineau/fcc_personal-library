@@ -8,27 +8,54 @@
 
 'use strict';
 
-var expect = require('chai').expect;
-var MongoClient = require('mongodb').MongoClient;
 var ObjectId = require('mongodb').ObjectId;
-const MONGODB_CONNECTION_STRING = process.env.DB;
-//Example connection: MongoClient.connect(MONGODB_CONNECTION_STRING, function(err, db) {});
 
-module.exports = function (app) {
+module.exports = function (app, db) {
 
   app.route('/api/books')
     .get(function (req, res){
-      //response will be array of book objects
-      //json res format: [{"_id": bookid, "title": book_title, "commentcount": num_of_comments },...]
+
+      db.collection('books')
+        .find()
+        .project({ comments: 0 })
+        .toArray((err, data) => res.send(data));
     })
     
     .post(function (req, res){
       var title = req.body.title;
-      //response will contain new book object including atleast _id and title
+      
+      if (!title) {
+        res.status(400).send('Please insert the book title');
+      } else {
+        
+        db.collection('books').insertOne(
+          {
+            title: title,
+            comments: [],
+            commentcount: 0
+          },
+          (err, data) => {
+            const book = data.ops[0];
+  
+            res.status(201).json(
+              {
+                title: book.title,
+                _id: book._id
+              }
+            )
+          }
+        );
+      }
     })
     
     .delete(function(req, res){
-      //if successful response will be 'complete delete successful'
+
+      db.collection('books').deleteMany({}, (err, data) => {
+        
+        const message = data.deletedCount > 0 ? 'complete delete successful' : 'the library is already empty';
+
+        res.send(message);
+      })
     });
 
 
@@ -36,18 +63,66 @@ module.exports = function (app) {
   app.route('/api/books/:id')
     .get(function (req, res){
       var bookid = req.params.id;
-      //json res format: {"_id": bookid, "title": book_title, "comments": [comment,comment,...]}
+
+      db.collection('books')
+        .findOne(
+          { _id: ObjectId(bookid) },
+          { commentcount: 0 },
+          (err, data) => {
+
+            if (!data) {
+              res.status(400).send('no book exists');
+            } else {
+              res.send(data)
+            }
+          }
+        );
     })
     
     .post(function(req, res){
       var bookid = req.params.id;
       var comment = req.body.comment;
-      //json res format same as .get
+      
+      db.collection('books')
+        .findOneAndUpdate(
+          { _id: ObjectId(bookid) },
+          {
+            $push: {
+              comments: comment
+            },
+            $inc: {
+              commentcount: 1
+            }
+          },
+          {
+            projection: { commentcount: 0 },
+            returnNewDocument: true
+          },
+          (err, data) => {
+
+            res.status(201).send(data.value);
+          }
+        );
     })
     
     .delete(function(req, res){
       var bookid = req.params.id;
-      //if successful response will be 'delete successful'
+
+      db.collection('books').deleteOne(
+        { _id: ObjectId(bookid) },
+        {},
+        (err, data) => {
+          let message;
+
+          if (data.deletedCount < 1) {
+            message = `could not delete ${bookid}`;
+          } else {
+            message = `delete successful`;
+          }
+
+          res.send(message);
+        }
+      );
     });
   
 };
