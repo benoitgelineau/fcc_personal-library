@@ -52,7 +52,7 @@ $( document ).ready(function() {
       dataType: 'json',
       data: $('#newCommentForm').serialize(),
       success: function(data) {
-        comments.unshift(newComment); //adds new comment to top of list
+        comments.unshift('<li>' +newComment+ '</li>'); //adds new comment to top of list
         $('#detailComments').html(comments.join(''));
       }
     });
@@ -74,10 +74,11 @@ $( document ).ready(function() {
     $.ajax({
       url: '/api/books',
       type: 'delete',
-      dataType: 'json',
+      dataType: 'text',
       data: $('#newBookForm').serialize(),
       success: function(data) {
         //update list
+        $('#display').html(data);
       }
     });
   }); 
