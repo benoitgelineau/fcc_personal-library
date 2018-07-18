@@ -6,7 +6,7 @@
 	"scripts": {
 		"start": "node server.js",
 		"server": "nodemon server.js",
-		"test": "NODE_ENV=test nodemon.js"
+		"test": "NODE_ENV=test nodemon server.js"
 	},
 	"dependencies": {
 		"body-parser": "^1.15.2",
